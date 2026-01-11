@@ -70,10 +70,13 @@ async fn get_mod_info(path: PathBuf) -> Result<ModInfo> {
 }
 
 async fn process_file(path: PathBuf, state: Arc<AppState>) -> Result<()> {
+    if state.verbose {
+        println!("--- Processing file: {:?} ---", path.file_name().unwrap());
+    }
     let modinfo = get_mod_info(path.clone()).await?;
     if state.verbose {
         println!(
-            "Processing: {} (modId: {}, Version: {})",
+            "DisplayName: {} (ModID: {}, Version: {})",
             modinfo
                 .display_name
                 .clone()
@@ -149,9 +152,9 @@ async fn process_file(path: PathBuf, state: Arc<AppState>) -> Result<()> {
     new_path.set_file_name(safe_name);
 
     if state.verbose {
-        println!("\tFound in DB: {}, Modrinth: {}", !db_name.is_none(), !category_tag.is_empty());
+        println!("Found in DB: {}, Modrinth: {}", !db_name.is_none(), !category_tag.is_empty());
         println!(
-            "\t{:?} is renaming to: {:?}",
+            "{:?} is renaming to: {:?}",
             path.file_name().unwrap(),
             new_path.file_name().unwrap()
         );
@@ -214,6 +217,7 @@ async fn main() -> Result<()> {
     // --- 2. 初始化数据库 ---
     let db = ModTranslationDb::init(&args.url, &args.db_name).await?;
     let modrinth_api = ModrinthApi::new(&args.api_endpoint);
+    println!("数据库和 API 初始化完成，开始处理文件夹: {}", args.path);
 
     let state = Arc::new(AppState {
         db_pool: db,
