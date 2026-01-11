@@ -194,7 +194,7 @@ struct Args {
     api_endpoint: String,
 
     /// 数据库本地存储名称
-    #[arg(short, long, default_value = "ModData.db")]
+    #[arg(short, long, default_value = "ModData")]
     db_name: String,
 
     /// Verbose 模式，输出更多调试信息
