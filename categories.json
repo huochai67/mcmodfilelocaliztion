@@ -1,0 +1,20 @@
+{
+    "technology": "科技",
+    "magic": "魔法",
+    "adventure": "冒险",
+    "utility": "实用",
+    "optimization": "性能优化",
+    "vanilla-like": "原版风",
+    "realistic": "写实风",
+    
+    "worldgen": "世界元素",
+    "food": "食物",
+    "game-mechanics": "游戏机制",
+    "transportation": "运输",
+    "storage": "仓储",
+    "decoration": "装饰",
+    "mobs": "生物",
+    "equipment": "装备",
+    "social": "服务器",
+    "library": "支持库"
+}
