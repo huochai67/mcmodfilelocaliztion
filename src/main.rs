@@ -45,28 +45,50 @@ async fn get_mod_info(path: PathBuf) -> Result<ModInfo> {
     let file = File::open(&path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
-    // 1. 解析 TOML
-    let toml_str = {
-        let mut f = archive.by_name("META-INF/neoforge.mods.toml")?;
-        let mut s = String::new();
-        f.read_to_string(&mut s)?;
-        s
-    };
-    let config: NeoForgeConfig = toml::from_str(&toml_str)?;
-    let m = config.mods.first().context("No mod info")?;
+    if archive.by_name("META-INF/neoforge.mods.toml").is_ok() {
+        // 1. 解析 TOML
+        let toml_str = {
+            let mut f = archive.by_name("META-INF/neoforge.mods.toml")?;
+            let mut s = String::new();
+            f.read_to_string(&mut s)?;
+            s
+        };
+        let config: NeoForgeConfig = toml::from_str(&toml_str)?;
+        let m = config.mods.first().context("No mod info")?;
 
-    // 2. 版本处理
-    let version = if m.version == "${file.jarVersion}" {
-        extract_manifest_version(&mut archive).unwrap_or_else(|_| "unknown".to_string())
-    } else {
-        m.version.clone()
-    };
+        // 2. 版本处理
+        let version = if m.version == "${file.jarVersion}" {
+            extract_manifest_version(&mut archive).unwrap_or_else(|_| "unknown".to_string())
+        } else {
+            m.version.clone()
+        };
 
-    Ok(ModInfo {
-        mod_id: m.mod_id.clone(),
-        display_name: m.display_name.clone(),
-        version,
-    })
+        return Ok(ModInfo {
+            mod_id: m.mod_id.clone(),
+            display_name: m.display_name.clone(),
+            version,
+        });
+    }
+
+    if archive.by_name("fabric.mod.json").is_ok() {
+        let json_str = {
+            let mut f = archive.by_name("fabric.mod.json")?;
+            let mut s = String::new();
+            f.read_to_string(&mut s)?;
+            s
+        };
+        let json: serde_json::Value = serde_json::from_str(&json_str)?;
+        let mod_id = json["id"].as_str().unwrap_or("unknown").to_string();
+        let display_name = json["name"].as_str().map(|s| s.to_string());
+        let version = json["version"].as_str().unwrap_or("unknown").to_string();
+        return Ok(ModInfo {
+            mod_id,
+            display_name,
+            version,
+        });
+    }
+
+    Err(anyhow::anyhow!("Not supported mod"))
 }
 
 async fn process_file(path: PathBuf, state: Arc<AppState>) -> Result<()> {
@@ -95,7 +117,8 @@ async fn process_file(path: PathBuf, state: Arc<AppState>) -> Result<()> {
     //         modinfo.mod_id
     //     );
     // }
-    let final_name = db_name.clone()
+    let final_name = db_name
+        .clone()
         .or(modinfo.display_name.clone())
         .unwrap_or_else(|| modinfo.mod_id.clone());
 
@@ -152,7 +175,11 @@ async fn process_file(path: PathBuf, state: Arc<AppState>) -> Result<()> {
     new_path.set_file_name(safe_name);
 
     if state.verbose {
-        println!("Found in DB: {}, Modrinth: {}", !db_name.is_none(), !category_tag.is_empty());
+        println!(
+            "Found in DB: {}, Modrinth: {}",
+            !db_name.is_none(),
+            !category_tag.is_empty()
+        );
         println!(
             "{:?} is renaming to: {:?}",
             path.file_name().unwrap(),
